@@ -2,19 +2,14 @@ from app.llm.client import GeminiClient
 
 
 def main():
+
     llm = GeminiClient()
 
-    prompt = """
-    You are an AI assistant for a business decision intelligence system.
+    question = "What is business revenue?"
 
-    Explain in two sentences what you would do if a business user asked:
+    response = llm.ask_with_tool(question)
 
-    "Why did our sales decrease last quarter?"
-    """
-
-    response = llm.generate(prompt)
-
-    print("\nGemini Response:\n")
+    print("\nFinal Response:\n")
     print(response)
 
 

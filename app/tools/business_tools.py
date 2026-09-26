@@ -1,0 +1,20 @@
+def get_sales_summary(region: str) -> dict:
+    sales_data = {
+        "North": 120000,
+        "South": 95000,
+        "East": 80000,
+        "West": 110000
+    }
+
+    sales = sales_data.get(region)
+
+    if sales is None:
+        return {
+            "region": region,
+            "error": "Region not found"
+        }
+
+    return {
+        "region": region,
+        "sales": sales
+    }
