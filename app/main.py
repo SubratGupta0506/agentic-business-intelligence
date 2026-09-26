@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from app.llm.client import GeminiClient
+from app.agents.business_agent import BusinessAgent
 
 
 app = FastAPI(
@@ -22,9 +22,10 @@ def root():
 
 @app.post("/api/ask")
 def ask_question(request: QuestionRequest):
-    llm = GeminiClient()
 
-    response = llm.generate(request.question)
+    agent = BusinessAgent()
+
+    response = agent.run(request.question)
 
     return {
         "question": request.question,
