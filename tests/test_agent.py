@@ -5,11 +5,15 @@ def main():
 
     agent = BusinessAgent()
 
-    question = "Which region has the highest sales?"
+    question = (
+        "Sales declined in July 2014 compared with June 2014. "
+        "What happened, and how should we interpret the role "
+        "of discounting according to the company's business policies?"
+    )
 
     response = agent.run(question)
 
-    print("\nAgent Response:\n")
+    print("\nBusiness Investigation:\n")
     print(response)
 
 
