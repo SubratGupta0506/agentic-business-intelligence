@@ -6,4 +6,7 @@ __pycache__/
 .vscode/
 data/vector_store/
 data/superstore.csv
-data/superstore_cleaned.csv
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
