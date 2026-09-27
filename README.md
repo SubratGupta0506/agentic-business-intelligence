@@ -38,9 +38,9 @@ flowchart TD
 
 ---
 
-## Agent Orchestration (LangGraph Flow)
+## Agent Orchestration & Tool Calling
 
-The business agent is orchestrated using a state graph pattern (LangGraph style) in `app/agents/business_agent.py`:
+The current `BusinessAgent` uses Gemini 2.5 Flash native function calling with an application-level tool execution loop. The repository also contains LangGraph-based prototype implementations used to explore graph-based agent orchestration, tool execution, and investigation workflows.
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -53,7 +53,6 @@ The business agent is orchestrated using a state graph pattern (LangGraph style)
 |        a. If Model requests Function Call(s) -> Execute Local Python Tool         |
 |        b. Append Tool Response to Messages -> Loop back to Gemini 2.5 Flash       |
 |        c. If Model returns Final Text -> Finalize Evidence & Return Result        |
-|   5. Enforce Max Iterations Guardrail (Default: 6 steps)                          |
 +-----------------------------------------------------------------------------------+
 ```
 
@@ -61,9 +60,23 @@ The business agent is orchestrated using a state graph pattern (LangGraph style)
 
 1. **Input Ingestion:** The agent initializes a message stack with a system prompt setting bounds on evidence, domain assumptions, and business reasoning rules.
 2. **Model Call:** The agent invokes Gemini 2.5 Flash passing available tool specifications.
-3. **Tool Invocation:** If Gemini requests tool calls (e.g., calling `get_profit_trend` or `search_business_documents`), the orchestration layer executes the function locally against PostgreSQL or FAISS.
+3. **Tool Invocation:** If Gemini requests tool calls (e.g., calling `analyze_profit_trend` or `search_business_documents`), the orchestration layer executes the function locally against PostgreSQL or FAISS.
 4. **Tool Result Injection:** The tool's output is wrapped into a tool response payload and appended back to the conversation thread.
-5. **Synthesis or Recursion:** Gemini evaluates the updated thread. If sufficient evidence is collected, it generates the final answer. If more data is needed, it issues additional tool calls until the iteration limit is reached.
+5. **Synthesis or Recursion:** Gemini evaluates the updated thread. If sufficient evidence is collected, it generates the final answer. If more data is needed, it issues additional tool calls, continuing until Gemini returns a final response.
+
+---
+
+## LangGraph Prototypes
+
+The repository includes LangGraph-based prototype implementations exploring graph-based agent orchestration, Gemini integration, tool execution, iterative reasoning loops, and multi-step business investigation workflows.
+
+The current Version 1 `BusinessAgent` uses Gemini's native function-calling loop, while the LangGraph prototypes document and explore alternative graph-based orchestration patterns:
+
+- `app/agents/langgraph_demo.py`
+- `app/agents/langgraph_tool_demo.py`
+- `app/agents/langgraph_gemini_demo.py`
+- `app/agents/langgraph_loop_demo.py`
+- `app/agents/langgraph_investigation_demo.py`
 
 ---
 
@@ -73,11 +86,11 @@ All deterministic analytics and RAG integrations are exposed to the agent as exp
 
 | Tool Name | Purpose | Data Source |
 |---|---|---|
-| `get_business_summary` | Provides overall KPI summaries (Sales, Profit, Orders, Quantity, Avg Discount) over a specific date range or category. | PostgreSQL (orders) |
-| `get_profit_trend` | Computes profit and sales aggregated over time (monthly, quarterly, yearly). | PostgreSQL (orders) |
-| `get_monthly_trend` | Generates detailed monthly sales, profit, order count, and discount trends for a specific year. | PostgreSQL (orders) |
-| `compare_periods` | Executes comparative period analysis (e.g., Month-over-Month or Year-over-Year percentage changes) across metrics. | PostgreSQL (orders) |
-| `get_operational_changes` | Analyzes changes in shipping modes, product sub-categories, and discount behaviors between two periods. | PostgreSQL (orders) |
+| `analyze_business_data` | Provides overall KPI summaries (Sales, Profit, Orders, Quantity, Avg Discount) over a specific date range or category. | PostgreSQL (orders) |
+| `analyze_profit_trend` | Computes profit and sales aggregated over time (monthly, quarterly, yearly). | PostgreSQL (orders) |
+| `analyze_monthly_trend` | Generates detailed monthly sales, profit, order count, and discount trends for a specific year. | PostgreSQL (orders) |
+| `compare_period_dimension` | Executes comparative period analysis (e.g., Month-over-Month or Year-over-Year percentage changes) across metrics. | PostgreSQL (orders) |
+| `analyze_operational_change` | Analyzes changes in shipping modes, product sub-categories, and discount behaviors between two periods. | PostgreSQL (orders) |
 | `search_business_documents` | Semantic search over internal business policies, KPI definitions, and governance documents. | FAISS Vector Store (data/documents/) |
 
 ---
@@ -245,15 +258,7 @@ The backend (`app/main.py`) exposes a REST API for serving agent investigations 
 ```json
 {
   "question": "Why did profit decline in July 2014 compared to June 2014?",
-  "answer": "...",
-  "evidence": [
-    {
-      "tool_name": "compare_periods",
-      "arguments": { "period1_start": "2014-06-01", "period1_end": "2014-06-30", "period2_start": "2014-07-01", "period2_end": "2014-07-31" },
-      "result": { ... }
-    }
-  ],
-  "steps_taken": 3
+  "response": "..."
 }
 ```
 
@@ -261,7 +266,7 @@ The backend (`app/main.py`) exposes a REST API for serving agent investigations 
 
 ## React Frontend Framework
 
-The user interface (`decisioniq-frontend/`) is structured as an Agentic BI Command Center using React, Vite, Tailwind CSS, and Lucide Icons.
+The user interface (`frontend/`) is structured as an Agentic BI Command Center using React, Vite, Tailwind CSS, and Lucide Icons.
 
 ### UI Pages & Modules
 
@@ -362,7 +367,7 @@ The backend API will be available at `http://localhost:8000`.
 Open a new terminal window:
 
 ```bash
-cd decisioniq-frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -416,7 +421,7 @@ agentic-business-intelligence/
 │   ├── processed/                  # Cleaned Superstore CSV files
 │   └── raw/                        # Raw Global Superstore dataset CSV
 │
-├── decisioniq-frontend/            # React + Vite + Tailwind CSS Application
+├── frontend/            # React + Vite + Tailwind CSS Application
 │   ├── src/
 │   │   ├── components/             # Reusable UI cards & layout components
 │   │   ├── pages/                  # Explorer, Investigation Desk, Architecture view
@@ -482,7 +487,7 @@ The analytics tools have been verified against the dataset. Below is an example 
 
 ### Diagnostic Evidence Interpretation
 
-When queried about the profit decline in July 2014, the business agent retrieves the numerical reduction (-35.96% profit, driven by a -39.47% drop in volume) via `compare_periods`, while checking `pricing_discount_policy.md` via `search_business_documents` to verify if the increase in discount rate violated discount control guidelines.
+When queried about the profit decline in July 2014, the business agent retrieves the numerical reduction (-35.96% profit, driven by a -39.47% drop in volume) via `compare_period_dimension`, while checking `pricing_discount_policy.md` via `search_business_documents` to verify if the increase in discount rate violated discount control guidelines.
 
 ---
 
